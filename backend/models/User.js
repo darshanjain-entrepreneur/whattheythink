@@ -14,10 +14,7 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    profilePhoto: {
-        type: String,
-        default: null
-    },
+
     groups: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Group'

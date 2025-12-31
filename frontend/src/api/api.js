@@ -40,10 +40,7 @@ api.interceptors.response.use(
 export const authAPI = {
     register: (username, password) => api.post('/auth/register', { username, password }),
     login: (username, password) => api.post('/auth/login', { username, password }),
-    getMe: () => api.get('/auth/me'),
-    uploadPhoto: (formData) => api.post('/auth/upload-photo', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-    })
+    getMe: () => api.get('/auth/me')
 };
 
 // Groups API

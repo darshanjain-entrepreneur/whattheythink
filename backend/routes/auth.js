@@ -1,43 +1,9 @@
 const express = require('express');
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { JWT_SECRET, protect } = require('../middleware/auth');
 
-const router = express.Router();
 
-// Ensure uploads directory exists
-const uploadsDir = path.join(__dirname, '../uploads');
-if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
-}
-
-// Multer configuration for profile photos
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, uploadsDir);
-    },
-    filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, 'profile-' + uniqueSuffix + path.extname(file.originalname));
-    }
-});
-
-const upload = multer({
-    storage: storage,
-    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
-    fileFilter: function (req, file, cb) {
-        const allowedTypes = /jpeg|jpg|png|gif|webp/;
-        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-        const mimetype = allowedTypes.test(file.mimetype);
-        if (extname && mimetype) {
-            return cb(null, true);
-        }
-        cb(new Error('Only image files are allowed'));
-    }
-});
 
 // Generate JWT
 const generateToken = (id) => {
@@ -86,7 +52,6 @@ router.post('/register', async (req, res) => {
         res.status(201).json({
             _id: user._id,
             username: user.username,
-            profilePhoto: user.profilePhoto,
             token: generateToken(user._id)
         });
     } catch (error) {
@@ -121,7 +86,6 @@ router.post('/login', async (req, res) => {
         res.json({
             _id: user._id,
             username: user.username,
-            profilePhoto: user.profilePhoto,
             token: generateToken(user._id)
         });
     } catch (error) {
@@ -137,40 +101,6 @@ router.get('/me', protect, async (req, res) => {
     try {
         const user = await User.findById(req.user._id).select('-passwordHash').populate('groups', 'name inviteCode');
         res.json(user);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error' });
-    }
-});
-
-// @route   POST /api/auth/upload-photo
-// @desc    Upload profile photo
-// @access  Private
-router.post('/upload-photo', protect, upload.single('photo'), async (req, res) => {
-    try {
-        if (!req.file) {
-            return res.status(400).json({ message: 'Please upload a photo' });
-        }
-
-        const photoUrl = `/uploads/${req.file.filename}`;
-
-        // Delete old photo if exists
-        const user = await User.findById(req.user._id);
-        if (user.profilePhoto) {
-            const oldPhotoPath = path.join(__dirname, '..', user.profilePhoto);
-            if (fs.existsSync(oldPhotoPath)) {
-                fs.unlinkSync(oldPhotoPath);
-            }
-        }
-
-        // Update user with new photo
-        user.profilePhoto = photoUrl;
-        await user.save();
-
-        res.json({
-            message: 'Photo uploaded successfully',
-            profilePhoto: photoUrl
-        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server error' });
